@@ -79,7 +79,6 @@ const CardTrackingSystem = () => {
     key: ''
   });
 
-  // COMPLETE FORM DATA WITH ALL FIELDS
   const [formData, setFormData] = useState({
     date_purchased: '',
     source: 'eBay',
@@ -177,7 +176,6 @@ const CardTrackingSystem = () => {
       
       await loadCards();
       setCurrentView('inventory');
-      // RESET FORM WITH ALL COMPLETE FIELDS
       setFormData({
         date_purchased: '',
         source: 'eBay',
@@ -234,7 +232,6 @@ const CardTrackingSystem = () => {
     totalRevenue: cards.filter(card => card.status === 'Sold').reduce((sum, card) => sum + (parseFloat(card.price) || 0), 0)
   };
 
-  // HELPER FUNCTION TO FORMAT DATES
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
@@ -534,20 +531,9 @@ const CardTrackingSystem = () => {
             </h2>
             
             <form onSubmit={handleSubmit}>
-              {/* Purchase Information Section */}
               <div style={{ backgroundColor: '#fff3cd', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #ffeaa7' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#856404' }}>💰 Purchase Information</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>📅 Date Purchased</label>
-                    <input
-                      type="date"
-                      value={formData.date_purchased}
-                      onChange={(e) => setFormData({...formData, date_purchased: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    />
-                  </div>
-
                   <div>
                     <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Card Number</label>
                     <input
@@ -598,7 +584,6 @@ const CardTrackingSystem = () => {
                 </div>
               </div>
 
-              {/* Grading Information Section */}
               <div style={{ backgroundColor: '#d4edda', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #c3e6cb' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#155724' }}>🏆 Grading Information</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
@@ -662,7 +647,6 @@ const CardTrackingSystem = () => {
                 </div>
               </div>
 
-              {/* Sale Information Section */}
               <div style={{ backgroundColor: '#f8d7da', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #f5c6cb' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#721c24' }}>💸 Sale Information</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
@@ -762,7 +746,12 @@ const CardTrackingSystem = () => {
   );
 };
 
-export default CardTrackingSystem; '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+export default CardTrackingSystem; display: 'block', fontWeight: '500', marginBottom: '5px' }}>📅 Date Purchased</label>
+                    <input
+                      type="date"
+                      value={formData.date_purchased}
+                      onChange={(e) => setFormData({...formData, date_purchased: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
                       required
                     />
                   </div>
@@ -816,7 +805,6 @@ export default CardTrackingSystem; '8px', border: '1px solid #d1d5db', borderRad
                 </div>
               </div>
 
-              {/* Card Details Section */}
               <div style={{ backgroundColor: '#f8f9fa', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#495057' }}>📋 Card Details</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
@@ -866,4 +854,9 @@ export default CardTrackingSystem; '8px', border: '1px solid #d1d5db', borderRad
                       value={formData.set_name}
                       onChange={(e) => setFormData({...formData, set_name: e.target.value})}
                       placeholder="e.g., Panini Prizm"
-                      style={{ width: '100%', padding:
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{
