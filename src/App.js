@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Simple icons as text (no external dependencies)
-const PlusIcon = () => <span>+</span>;
-const SearchIcon = () => <span>🔍</span>;
-const EditIcon = () => <span>✏️</span>;
-const DeleteIcon = () => <span>🗑️</span>;
-const DatabaseIcon = () => <span>💾</span>;
+// Simple icon components
+const PlusIcon = () => <span className="text-lg">+</span>;
+const SearchIcon = () => <span className="text-lg">🔍</span>;
+const EditIcon = () => <span className="text-sm">✏️</span>;
+const DeleteIcon = () => <span className="text-sm">🗑️</span>;
+const DatabaseIcon = () => <span className="text-2xl">💾</span>;
+const PackageIcon = () => <span className="text-2xl">📦</span>;
+const DollarIcon = () => <span className="text-2xl">💰</span>;
+const TrendingIcon = () => <span className="text-2xl">📈</span>;
+const ChartIcon = () => <span className="text-2xl">📊</span>;
+const EyeIcon = () => <span className="text-lg">👁️</span>;
+const EyeOffIcon = () => <span className="text-lg">🙈</span>;
 
 let supabase = null;
 let supabaseOperations = null;
@@ -70,6 +76,7 @@ const CardTrackingSystem = () => {
   const [currentView, setCurrentView] = useState('setup');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCard, setEditingCard] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -82,15 +89,29 @@ const CardTrackingSystem = () => {
   const [formData, setFormData] = useState({
     date_purchased: '',
     source: 'eBay',
+    listing_link: '',
+    seller_name: '',
     player_card_name: '',
     year: '',
     set_name: '',
     cost: '',
     status: 'Purchased',
+    submission_date: '',
     grade: '',
+    grading_time_days: '',
     date_sold: '',
+    selling_platform: 'eBay',
     price: '',
-    notes: ''
+    inventory_time_days: '',
+    card_type: '',
+    sport: '',
+    card_number: '',
+    condition_purchased: '',
+    grading_company: '',
+    serial_number: '',
+    grading_cost: '',
+    notes: '',
+    photo_links: ''
   });
 
   useEffect(() => {
@@ -119,6 +140,7 @@ const CardTrackingSystem = () => {
     } catch (error) {
       setConnectionError('Failed to connect to Supabase. Please check your credentials.');
       setIsConnected(false);
+      console.error('Supabase connection error:', error);
     }
   };
 
@@ -148,35 +170,86 @@ const CardTrackingSystem = () => {
     const { data, error } = await supabaseOperations.select();
     if (!error) {
       setCards(data || []);
+    } else {
+      console.error('Error loading cards:', error);
     }
+  };
+
+  const calculateDerivedFields = (card) => {
+    const updates = { ...card };
+    
+    if (card.submission_date && card.grade) {
+      const submissionDate = new Date(card.submission_date);
+      const today = new Date();
+      updates.grading_time_days = Math.floor((today - submissionDate) / (1000 * 60 * 60 * 24));
+    }
+    
+    if (card.date_purchased && card.date_sold) {
+      const purchaseDate = new Date(card.date_purchased);
+      const soldDate = new Date(card.date_sold);
+      updates.inventory_time_days = Math.floor((soldDate - purchaseDate) / (1000 * 60 * 60 * 24));
+    }
+    
+    if (card.price && card.cost) {
+      const revenue = parseFloat(card.price) || 0;
+      const totalCost = (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0);
+      updates.profit_loss = revenue - totalCost;
+    }
+    
+    return updates;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!supabaseOperations) return;
     
+    const cardData = calculateDerivedFields(formData);
+    
     try {
       if (editingCard) {
-        await supabaseOperations.update(editingCard.id, formData);
-        setEditingCard(null);
+        const { error } = await supabaseOperations.update(editingCard.id, cardData);
+        if (!error) {
+          setEditingCard(null);
+          await loadCards();
+        } else {
+          console.error('Error updating card:', error);
+        }
       } else {
-        await supabaseOperations.insert(formData);
+        const { error } = await supabaseOperations.insert(cardData);
+        if (!error) {
+          setShowAddForm(false);
+          await loadCards();
+        } else {
+          console.error('Error adding card:', error);
+        }
       }
       
-      await loadCards();
-      setCurrentView('inventory');
       setFormData({
         date_purchased: '',
         source: 'eBay',
+        listing_link: '',
+        seller_name: '',
         player_card_name: '',
         year: '',
         set_name: '',
         cost: '',
         status: 'Purchased',
+        submission_date: '',
         grade: '',
+        grading_time_days: '',
         date_sold: '',
+        selling_platform: 'eBay',
         price: '',
-        notes: ''
+        inventory_time_days: '',
+        card_type: '',
+        sport: '',
+        card_number: '',
+        condition_purchased: '',
+        grading_company: '',
+        serial_number: '',
+        grading_cost: '',
+        notes: '',
+        photo_links: ''
       });
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -193,8 +266,12 @@ const CardTrackingSystem = () => {
     if (!supabaseOperations) return;
     
     if (window.confirm('Are you sure you want to delete this card?')) {
-      await supabaseOperations.delete(id);
-      await loadCards();
+      const { error } = await supabaseOperations.delete(id);
+      if (!error) {
+        await loadCards();
+      } else {
+        console.error('Error deleting card:', error);
+      }
     }
   };
 
@@ -206,468 +283,804 @@ const CardTrackingSystem = () => {
 
   const dashboardStats = {
     totalCards: cards.length,
-    totalInvested: cards.reduce((sum, card) => sum + (parseFloat(card.cost) || 0), 0),
-    totalRevenue: cards.filter(card => card.status === 'Sold').reduce((sum, card) => sum + (parseFloat(card.price) || 0), 0)
+    totalInvested: cards.reduce((sum, card) => sum + (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0), 0),
+    totalRevenue: cards.filter(card => card.status === 'Sold').reduce((sum, card) => sum + (parseFloat(card.price) || 0), 0),
+    totalProfit: cards.filter(card => card.status === 'Sold').reduce((sum, card) => {
+      const revenue = parseFloat(card.price) || 0;
+      const totalCost = (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0);
+      return sum + (revenue - totalCost);
+    }, 0)
   };
 
-  if (!isConnected && currentView === 'setup') {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '20px' }}>
-        <div style={{ maxWidth: '400px', margin: '40px auto', backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <DatabaseIcon />
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>Connect to Supabase</h2>
-            <p style={{ color: '#666' }}>Enter your Supabase credentials to get started</p>
+  const renderSetupScreen = () => (
+    <div className="max-w-md mx-auto mt-10">
+      <div className="bg-white p-8 rounded-lg shadow-lg">
+        <div className="text-center mb-6">
+          <div className="mx-auto mb-4"><DatabaseIcon /></div>
+          <h2 className="text-2xl font-bold text-gray-900">Connect to Supabase</h2>
+          <p className="text-gray-600 mt-2">Enter your Supabase credentials to get started</p>
+        </div>
+
+        {connectionError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            {connectionError}
+          </div>
+        )}
+
+        <form onSubmit={handleSupabaseConnect} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Supabase Project URL
+            </label>
+            <input
+              type="url"
+              value={supabaseConfig.url}
+              onChange={(e) => setSupabaseConfig({...supabaseConfig, url: e.target.value})}
+              placeholder="https://your-project.supabase.co"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
           </div>
 
-          {connectionError && (
-            <div style={{ backgroundColor: '#fee', border: '1px solid #fcc', color: '#c00', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>
-              {connectionError}
-            </div>
-          )}
-
-          <form onSubmit={handleSupabaseConnect}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>
-                Supabase Project URL
-              </label>
-              <input
-                type="url"
-                value={supabaseConfig.url}
-                onChange={(e) => setSupabaseConfig({...supabaseConfig, url: e.target.value})}
-                placeholder="https://your-project.supabase.co"
-                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>
-                Anon/Public API Key
-              </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Anon/Public API Key
+            </label>
+            <div className="relative">
               <input
                 type={showApiKey ? "text" : "password"}
                 value={supabaseConfig.key}
                 onChange={(e) => setSupabaseConfig({...supabaseConfig, key: e.target.value})}
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowApiKey(!showApiKey)}
-                style={{ marginTop: '5px', background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
               >
-                {showApiKey ? 'Hide' : 'Show'} API Key
+                {showApiKey ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
+          </div>
 
-            <button
-              type="submit"
-              style={{ width: '100%', backgroundColor: '#2563eb', color: 'white', padding: '12px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: '500' }}
-            >
-              Connect to Supabase
-            </button>
-          </form>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-medium"
+          >
+            Connect to Supabase
+          </button>
+        </form>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">How to find your credentials:</h3>
+          <ol className="text-xs text-blue-700 space-y-1">
+            <li>1. Go to your Supabase dashboard</li>
+            <li>2. Select your project</li>
+            <li>3. Go to Settings → API</li>
+            <li>4. Copy the "Project URL" and "anon public" key</li>
+          </ol>
+        </div>
+
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-800 mb-2">Need to create the database table?</h3>
+          <p className="text-xs text-gray-600 mb-2">Run this SQL in your Supabase SQL Editor:</p>
+          <button
+            onClick={() => setCurrentView('sql-setup')}
+            className="text-blue-600 hover:text-blue-800 text-xs underline"
+          >
+            View SQL Setup Script
+          </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+
+  const renderSqlSetup = () => (
+    <div className="max-w-4xl mx-auto mt-10">
+      <div className="bg-white p-8 rounded-lg shadow-lg">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Database Setup</h2>
+          <button
+            onClick={() => setCurrentView('setup')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            ← Back to Setup
+          </button>
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg mb-4">
+          <p className="text-sm text-gray-700 mb-2">
+            Copy and paste this SQL into your Supabase SQL Editor to create the cards table:
+          </p>
+        </div>
+
+        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
+          <pre>
+{`-- Create the cards table
+CREATE TABLE cards (
+  id BIGSERIAL PRIMARY KEY,
+  card_id TEXT UNIQUE NOT NULL,
+  date_purchased DATE,
+  source TEXT,
+  listing_link TEXT,
+  seller_name TEXT,
+  player_card_name TEXT NOT NULL,
+  year TEXT,
+  set_name TEXT,
+  cost DECIMAL(10,2),
+  status TEXT DEFAULT 'Purchased',
+  submission_date DATE,
+  grade INTEGER,
+  grading_time_days INTEGER,
+  date_sold DATE,
+  selling_platform TEXT,
+  price DECIMAL(10,2),
+  inventory_time_days INTEGER,
+  card_type TEXT,
+  sport TEXT,
+  card_number TEXT,
+  condition_purchased TEXT,
+  grading_company TEXT,
+  serial_number TEXT,
+  grading_cost DECIMAL(10,2),
+  profit_loss DECIMAL(10,2),
+  notes TEXT,
+  photo_links TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy for authenticated users
+CREATE POLICY "Allow all operations for authenticated users" ON cards
+    FOR ALL USING (auth.role() = 'authenticated');`}
+          </pre>
+        </div>
+
+        <div className="mt-6 flex gap-4">
+          <button
+            onClick={() => {
+              const sqlText = `-- Create the cards table
+CREATE TABLE cards (
+  id BIGSERIAL PRIMARY KEY,
+  card_id TEXT UNIQUE NOT NULL,
+  date_purchased DATE,
+  source TEXT,
+  listing_link TEXT,
+  seller_name TEXT,
+  player_card_name TEXT NOT NULL,
+  year TEXT,
+  set_name TEXT,
+  cost DECIMAL(10,2),
+  status TEXT DEFAULT 'Purchased',
+  submission_date DATE,
+  grade INTEGER,
+  grading_time_days INTEGER,
+  date_sold DATE,
+  selling_platform TEXT,
+  price DECIMAL(10,2),
+  inventory_time_days INTEGER,
+  card_type TEXT,
+  sport TEXT,
+  card_number TEXT,
+  condition_purchased TEXT,
+  grading_company TEXT,
+  serial_number TEXT,
+  grading_cost DECIMAL(10,2),
+  profit_loss DECIMAL(10,2),
+  notes TEXT,
+  photo_links TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy for authenticated users
+CREATE POLICY "Allow all operations for authenticated users" ON cards
+    FOR ALL USING (auth.role() = 'authenticated');`;
+              navigator.clipboard.writeText(sqlText);
+              alert('SQL copied to clipboard!');
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Copy SQL
+          </button>
+          <button
+            onClick={() => setCurrentView('setup')}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-600 text-sm font-medium">Total Cards</p>
+              <p className="text-2xl font-bold text-blue-800">{dashboardStats.totalCards}</p>
+            </div>
+            <PackageIcon />
+          </div>
+        </div>
+        
+        <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-red-600 text-sm font-medium">Total Invested</p>
+              <p className="text-2xl font-bold text-red-800">${dashboardStats.totalInvested.toFixed(2)}</p>
+            </div>
+            <DollarIcon />
+          </div>
+        </div>
+        
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-600 text-sm font-medium">Total Revenue</p>
+              <p className="text-2xl font-bold text-green-800">${dashboardStats.totalRevenue.toFixed(2)}</p>
+            </div>
+            <TrendingIcon />
+          </div>
+        </div>
+        
+        <div className={`p-4 rounded-lg border ${dashboardStats.totalProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm font-medium ${dashboardStats.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Total Profit</p>
+              <p className={`text-2xl font-bold ${dashboardStats.totalProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                ${dashboardStats.totalProfit.toFixed(2)}
+              </p>
+            </div>
+            <ChartIcon />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Recent Cards</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2">Card ID</th>
+                <th className="text-left p-2">Player/Card</th>
+                <th className="text-left p-2">Set</th>
+                <th className="text-left p-2">Status</th>
+                <th className="text-left p-2">Cost</th>
+                <th className="text-left p-2">Current Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cards.slice(0, 5).map(card => (
+                <tr key={card.id} className="border-b hover:bg-gray-50">
+                  <td className="p-2 font-mono text-xs">{card.card_id}</td>
+                  <td className="p-2">{card.player_card_name}</td>
+                  <td className="p-2">{card.set_name}</td>
+                  <td className="p-2">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      card.status === 'Sold' ? 'bg-green-100 text-green-800' :
+                      card.status === 'Selling' ? 'bg-yellow-100 text-yellow-800' :
+                      card.status === 'Grading' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {card.status}
+                    </span>
+                  </td>
+                  <td className="p-2">${parseFloat(card.cost || 0).toFixed(2)}</td>
+                  <td className="p-2">${card.status === 'Sold' ? parseFloat(card.price || 0).toFixed(2) : 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {cards.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <div className="mx-auto mb-4"><PackageIcon /></div>
+            <p className="text-lg font-medium">No cards yet</p>
+            <p className="text-sm">Add your first card to get started!</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderCardForm = () => (
+    <div className="bg-white p-6 rounded-lg shadow">
+      <h2 className="text-xl font-semibold mb-4">
+        {editingCard ? 'Edit Card' : 'Add New Card'}
+      </h2>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Date Purchased</label>
+            <input
+              type="date"
+              value={formData.date_purchased}
+              onChange={(e) => setFormData({...formData, date_purchased: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Source</label>
+            <select
+              value={formData.source}
+              onChange={(e) => setFormData({...formData, source: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            >
+              <option value="eBay">eBay</option>
+              <option value="Card Show">Card Show</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Seller Name</label>
+            <input
+              type="text"
+              value={formData.seller_name}
+              onChange={(e) => setFormData({...formData, seller_name: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Listing Link</label>
+            <input
+              type="url"
+              value={formData.listing_link}
+              onChange={(e) => setFormData({...formData, listing_link: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Player/Card Name</label>
+            <input
+              type="text"
+              value={formData.player_card_name}
+              onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Year</label>
+            <input
+              type="text"
+              value={formData.year}
+              onChange={(e) => setFormData({...formData, year: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., 2024-25"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Set</label>
+            <input
+              type="text"
+              value={formData.set_name}
+              onChange={(e) => setFormData({...formData, set_name: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., Panini Prizm"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Card Type/Category</label>
+            <input
+              type="text"
+              value={formData.card_type}
+              onChange={(e) => setFormData({...formData, card_type: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., Sports, Pokemon, Magic"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Sport</label>
+            <input
+              type="text"
+              value={formData.sport}
+              onChange={(e) => setFormData({...formData, sport: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., Football, Basketball"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Card Number</label>
+            <input
+              type="text"
+              value={formData.card_number}
+              onChange={(e) => setFormData({...formData, card_number: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Serial Number/Parallel</label>
+            <input
+              type="text"
+              value={formData.serial_number}
+              onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., /99, Gold Parallel"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Condition When Purchased</label>
+            <input
+              type="text"
+              value={formData.condition_purchased}
+              onChange={(e) => setFormData({...formData, condition_purchased: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., Near Mint, Raw"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Cost ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.cost}
+              onChange={(e) => setFormData({...formData, cost: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Grading Cost ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.grading_cost}
+              onChange={(e) => setFormData({...formData, grading_cost: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({...formData, status: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            >
+              <option value="Purchased">Purchased</option>
+              <option value="Grading">Grading</option>
+              <option value="Selling">Selling</option>
+              <option value="Sold">Sold</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Submission Date</label>
+            <input
+              type="date"
+              value={formData.submission_date}
+              onChange={(e) => setFormData({...formData, submission_date: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Grading Company</label>
+            <select
+              value={formData.grading_company}
+              onChange={(e) => setFormData({...formData, grading_company: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            >
+              <option value="">Select Company</option>
+              <option value="PSA">PSA</option>
+              <option value="BGS">BGS</option>
+              <option value="SGC">SGC</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Grade (1-10)</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={formData.grade}
+              onChange={(e) => setFormData({...formData, grade: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Date Sold</label>
+            <input
+              type="date"
+              value={formData.date_sold}
+              onChange={(e) => setFormData({...formData, date_sold: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Selling Platform</label>
+            <select
+              value={formData.selling_platform}
+              onChange={(e) => setFormData({...formData, selling_platform: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            >
+              <option value="eBay">eBay</option>
+              <option value="Card Show">Card Show</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Sale Price ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({...formData, price: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Photo Links</label>
+            <input
+              type="text"
+              value={formData.photo_links}
+              onChange={(e) => setFormData({...formData, photo_links: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="Comma-separated URLs"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium mb-1">Notes</label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({...formData, notes: e.target.value})}
+            className="w-full p-2 border rounded-lg"
+            rows="3"
+            placeholder="Any special notes, defects, or opportunities..."
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {editingCard ? 'Update Card' : 'Add Card'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingCard(null);
+              setCurrentView('inventory');
+              setFormData({
+                date_purchased: '',
+                source: 'eBay',
+                listing_link: '',
+                seller_name: '',
+                player_card_name: '',
+                year: '',
+                set_name: '',
+                cost: '',
+                status: 'Purchased',
+                submission_date: '',
+                grade: '',
+                grading_time_days: '',
+                date_sold: '',
+                selling_platform: 'eBay',
+                price: '',
+                inventory_time_days: '',
+                card_type: '',
+                sport: '',
+                card_number: '',
+                condition_purchased: '',
+                grading_company: '',
+                serial_number: '',
+                grading_cost: '',
+                notes: '',
+                photo_links: ''
+              });
+            }}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+
+  const renderInventory = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Card Inventory</h2>
+        <button
+          onClick={() => {
+            setShowAddForm(true);
+            setCurrentView('add');
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <PlusIcon />
+          Add Card
+        </button>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <SearchIcon />
+        <input
+          type="text"
+          placeholder="Search by player, set, or card ID..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1 p-2 border rounded-lg"
+        />
+      </div>
+      
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left p-3">Card ID</th>
+                <th className="text-left p-3">Player/Card</th>
+                <th className="text-left p-3">Year</th>
+                <th className="text-left p-3">Set</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Cost</th>
+                <th className="text-left p-3">Grade</th>
+                <th className="text-left p-3">Sale Price</th>
+                <th className="text-left p-3">Profit/Loss</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCards.map(card => {
+                const totalCost = (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0);
+                const revenue = parseFloat(card.price) || 0;
+                const profitLoss = card.status === 'Sold' ? revenue - totalCost : null;
+                
+                return (
+                  <tr key={card.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3 font-mono text-xs">{card.card_id}</td>
+                    <td className="p-3">{card.player_card_name}</td>
+                    <td className="p-3">{card.year}</td>
+                    <td className="p-3">{card.set_name}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        card.status === 'Sold' ? 'bg-green-100 text-green-800' :
+                        card.status === 'Selling' ? 'bg-yellow-100 text-yellow-800' :
+                        card.status === 'Grading' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {card.status}
+                      </span>
+                    </td>
+                    <td className="p-3">${totalCost.toFixed(2)}</td>
+                    <td className="p-3">{card.grade || 'N/A'}</td>
+                    <td className="p-3">{card.status === 'Sold' ? `${revenue.toFixed(2)}` : 'N/A'}</td>
+                    <td className="p-3">
+                      {profitLoss !== null && (
+                        <span className={profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          ${profitLoss.toFixed(2)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleEdit(card)}
+                          className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                        >
+                          <EditIcon />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(card.id)}
+                          className="p-1 text-red-600 hover:bg-red-100 rounded"
+                        >
+                          <DeleteIcon />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        
+        {filteredCards.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            {cards.length === 0 ? (
+              <div>
+                <div className="mx-auto mb-4"><PackageIcon /></div>
+                <p className="text-lg font-medium">No cards yet</p>
+                <p className="text-sm">Add your first card to get started!</p>
+              </div>
+            ) : (
+              <p>No cards match your search.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
-      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '20px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Card Tracking System</h1>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button
-              onClick={() => setCurrentView('dashboard')}
-              style={{ 
-                padding: '8px 12px', 
-                borderRadius: '4px', 
-                border: 'none', 
-                cursor: 'pointer',
-                backgroundColor: currentView === 'dashboard' ? '#dbeafe' : 'transparent',
-                color: currentView === 'dashboard' ? '#1d4ed8' : '#666'
-              }}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setCurrentView('inventory')}
-              style={{ 
-                padding: '8px 12px', 
-                borderRadius: '4px', 
-                border: 'none', 
-                cursor: 'pointer',
-                backgroundColor: currentView === 'inventory' ? '#dbeafe' : 'transparent',
-                color: currentView === 'inventory' ? '#1d4ed8' : '#666'
-              }}
-            >
-              Inventory
-            </button>
-            <button
-              onClick={handleDisconnect}
-              style={{ padding: '8px 12px', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              Disconnect
-            </button>
+    <div className="min-h-screen bg-gray-100">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Card Tracking System</h1>
+            {isConnected && (
+              <div className="flex items-center space-x-4">
+                <nav className="flex space-x-4">
+                  <button
+                    onClick={() => setCurrentView('dashboard')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'dashboard' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('inventory')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'inventory' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Inventory
+                  </button>
+                </nav>
+                <button
+                  onClick={handleDisconnect}
+                  className="px-3 py-2 text-sm text-red-600 hover:text-red-800"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px' }}>
-        {currentView === 'dashboard' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ color: '#2563eb', fontSize: '14px', margin: '0 0 5px 0' }}>Total Cards</h3>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{dashboardStats.totalCards}</p>
-              </div>
-              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ color: '#dc2626', fontSize: '14px', margin: '0 0 5px 0' }}>Total Invested</h3>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>${dashboardStats.totalInvested.toFixed(2)}</p>
-              </div>
-              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ color: '#16a34a', fontSize: '14px', margin: '0 0 5px 0' }}>Total Revenue</h3>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>${dashboardStats.totalRevenue.toFixed(2)}</p>
-              </div>
-            </div>
-            
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '18px', marginBottom: '15px' }}>Recent Cards</h3>
-              {cards.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>No cards added yet. Click "Inventory" then "Add Card" to get started!</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <th style={{ textAlign: 'left', padding: '8px' }}>Card ID</th>
-                        <th style={{ textAlign: 'left', padding: '8px' }}>Player/Card</th>
-                        <th style={{ textAlign: 'left', padding: '8px' }}>Set</th>
-                        <th style={{ textAlign: 'left', padding: '8px' }}>Status</th>
-                        <th style={{ textAlign: 'left', padding: '8px' }}>Cost</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cards.slice(0, 5).map(card => (
-                        <tr key={card.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '8px', fontFamily: 'monospace', fontSize: '12px' }}>{card.card_id}</td>
-                          <td style={{ padding: '8px' }}>{card.player_card_name}</td>
-                          <td style={{ padding: '8px' }}>{card.set_name}</td>
-                          <td style={{ padding: '8px' }}>
-                            <span style={{ 
-                              padding: '2px 8px', 
-                              borderRadius: '12px', 
-                              fontSize: '12px',
-                              backgroundColor: card.status === 'Sold' ? '#dcfce7' : '#f3f4f6',
-                              color: card.status === 'Sold' ? '#166534' : '#374151'
-                            }}>
-                              {card.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px' }}>${parseFloat(card.cost || 0).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {currentView === 'inventory' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>Card Inventory</h2>
-              <button
-                onClick={() => setCurrentView('add')}
-                style={{ 
-                  padding: '10px 20px', 
-                  backgroundColor: '#2563eb', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
-              >
-                <PlusIcon /> Add Card
-              </button>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-              <SearchIcon />
-              <input
-                type="text"
-                placeholder="Search by player, set, or card ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-              />
-            </div>
-            
-            <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              {filteredCards.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                  {cards.length === 0 ? (
-                    <div>
-                      <p style={{ fontSize: '18px', fontWeight: '500' }}>No cards yet</p>
-                      <p>Add your first card to get started!</p>
-                    </div>
-                  ) : (
-                    <p>No cards match your search.</p>
-                  )}
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ backgroundColor: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Card ID</th>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Player/Card</th>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Year</th>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Set</th>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Status</th>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Cost</th>
-                        <th style={{ textAlign: 'left', padding: '12px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredCards.map(card => (
-                        <tr key={card.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '12px' }}>{card.card_id}</td>
-                          <td style={{ padding: '12px' }}>{card.player_card_name}</td>
-                          <td style={{ padding: '12px' }}>{card.year}</td>
-                          <td style={{ padding: '12px' }}>{card.set_name}</td>
-                          <td style={{ padding: '12px' }}>
-                            <span style={{ 
-                              padding: '4px 8px', 
-                              borderRadius: '12px', 
-                              fontSize: '12px',
-                              backgroundColor: card.status === 'Sold' ? '#dcfce7' : '#f3f4f6',
-                              color: card.status === 'Sold' ? '#166534' : '#374151'
-                            }}>
-                              {card.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px' }}>${parseFloat(card.cost || 0).toFixed(2)}</td>
-                          <td style={{ padding: '12px' }}>
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                              <button
-                                onClick={() => handleEdit(card)}
-                                style={{ padding: '4px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                <EditIcon />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(card.id)}
-                                style={{ padding: '4px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                <DeleteIcon />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {currentView === 'add' && (
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
-              {editingCard ? 'Edit Card' : 'Add New Card'}
-            </h2>
-            
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Date Purchased</label>
-                  <input
-                    type="date"
-                    value={formData.date_purchased}
-                    onChange={(e) => setFormData({...formData, date_purchased: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Source</label>
-                  <select
-                    value={formData.source}
-                    onChange={(e) => setFormData({...formData, source: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  >
-                    <option value="eBay">eBay</option>
-                    <option value="Card Show">Card Show</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Player/Card Name</label>
-                  <input
-                    type="text"
-                    value={formData.player_card_name}
-                    onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Year</label>
-                  <input
-                    type="text"
-                    value={formData.year}
-                    onChange={(e) => setFormData({...formData, year: e.target.value})}
-                    placeholder="e.g., 2024-25"
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Set</label>
-                  <input
-                    type="text"
-                    value={formData.set_name}
-                    onChange={(e) => setFormData({...formData, set_name: e.target.value})}
-                    placeholder="e.g., Panini Prizm"
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Cost ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({...formData, cost: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  >
-                    <option value="Purchased">Purchased</option>
-                    <option value="Grading">Grading</option>
-                    <option value="Selling">Selling</option>
-                    <option value="Sold">Sold</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Grade (1-10)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.grade}
-                    onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Date Sold</label>
-                  <input
-                    type="date"
-                    value={formData.date_sold}
-                    onChange={(e) => setFormData({...formData, date_sold: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Sale Price ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-              </div>
-              
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  rows="3"
-                  placeholder="Any special notes, defects, or opportunities..."
-                  style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', resize: 'vertical' }}
-                />
-              </div>
-              
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="submit"
-                  style={{ 
-                    padding: '10px 20px', 
-                    backgroundColor: '#2563eb', 
-                    color: 'white', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
-                >
-                  {editingCard ? 'Update Card' : 'Add Card'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingCard(null);
-                    setCurrentView('inventory');
-                    setFormData({
-                      date_purchased: '',
-                      source: 'eBay',
-                      player_card_name: '',
-                      year: '',
-                      set_name: '',
-                      cost: '',
-                      status: 'Purchased',
-                      grade: '',
-                      date_sold: '',
-                      price: '',
-                      notes: ''
-                    });
-                  }}
-                  style={{ 
-                    padding: '10px 20px', 
-                    backgroundColor: '#d1d5db', 
-                    color: '#374151', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {!isConnected && currentView === 'setup' && renderSetupScreen()}
+        {currentView === 'sql-setup' && renderSqlSetup()}
+        {isConnected && currentView === 'dashboard' && renderDashboard()}
+        {isConnected && currentView === 'inventory' && renderInventory()}
+        {isConnected && currentView === 'add' && renderCardForm()}
       </div>
     </div>
   );
