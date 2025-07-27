@@ -526,6 +526,31 @@ const CardTrackingSystem = () => {
             </div>
           </div>
         )}
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                              <button
+                                onClick={() => handleEdit(card)}
+                                style={{ padding: '4px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                <EditIcon />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(card.id)}
+                                style={{ padding: '4px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                <DeleteIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {currentView === 'add' && (
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
