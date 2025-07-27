@@ -31,11 +31,10 @@ const CardTrackingSystem = () => {
     key: ''
   });
 
-  // Simplified form with only essential fields first
+  // Super minimal form - NO date fields for now
   const [formData, setFormData] = useState({
     player_card_name: '',
     cost: '',
-    date_purchased: '',
     source: 'eBay',
     year: '',
     set_name: '',
@@ -56,7 +55,7 @@ const CardTrackingSystem = () => {
     try {
       supabase = createClient(url, key);
       
-      // Test connection by trying to read from cards table
+      // Test connection
       const { data, error } = await supabase
         .from('cards')
         .select('*')
@@ -140,35 +139,6 @@ const CardTrackingSystem = () => {
     }
   };
 
-  const cleanFormData = (data) => {
-    const cleaned = {};
-    
-    // Only include fields that have values or are required
-    Object.keys(data).forEach(key => {
-      const value = data[key];
-      
-      if (value === '' || value === null || value === undefined) {
-        // For required fields, convert empty to null
-        if (['player_card_name'].includes(key)) {
-          cleaned[key] = null;
-        }
-        // For date fields, convert empty to null
-        else if (key.includes('date')) {
-          cleaned[key] = null;
-        }
-        // For numeric fields, convert empty to null
-        else if (['cost', 'price', 'grade', 'grading_cost'].includes(key)) {
-          cleaned[key] = null;
-        }
-        // Skip other empty fields entirely
-      } else {
-        cleaned[key] = value;
-      }
-    });
-    
-    return cleaned;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!supabase) return;
@@ -182,13 +152,22 @@ const CardTrackingSystem = () => {
         return;
       }
 
-      const cleanedData = cleanFormData(formData);
+      // Create a clean data object with NO date fields
+      const cardData = {
+        player_card_name: formData.player_card_name.trim(),
+        source: formData.source,
+        year: formData.year || null,
+        set_name: formData.set_name || null,
+        cost: formData.cost ? parseFloat(formData.cost) : null,
+        status: formData.status,
+        notes: formData.notes || null
+      };
       
       if (editingCard) {
         // Update existing card
         const { data, error } = await supabase
           .from('cards')
-          .update(cleanedData)
+          .update(cardData)
           .eq('id', editingCard.id)
           .select();
         
@@ -201,14 +180,16 @@ const CardTrackingSystem = () => {
       } else {
         // Insert new card
         const cardId = await generateCardId();
-        const cardData = {
-          ...cleanedData,
+        const newCardData = {
+          ...cardData,
           card_id: cardId
         };
         
+        console.log('Inserting card data:', newCardData); // Debug log
+        
         const { data, error } = await supabase
           .from('cards')
-          .insert([cardData])
+          .insert([newCardData])
           .select();
         
         if (error) {
@@ -222,7 +203,6 @@ const CardTrackingSystem = () => {
       setFormData({
         player_card_name: '',
         cost: '',
-        date_purchased: '',
         source: 'eBay',
         year: '',
         set_name: '',
@@ -243,12 +223,15 @@ const CardTrackingSystem = () => {
 
   const handleEdit = (card) => {
     setEditingCard(card);
-    // Convert null values to empty strings for form
-    const formattedCard = {};
-    Object.keys(formData).forEach(key => {
-      formattedCard[key] = card[key] || '';
+    setFormData({
+      player_card_name: card.player_card_name || '',
+      cost: card.cost || '',
+      source: card.source || 'eBay',
+      year: card.year || '',
+      set_name: card.set_name || '',
+      status: card.status || 'Purchased',
+      notes: card.notes || ''
     });
-    setFormData(formattedCard);
     setCurrentView('add');
   };
 
@@ -466,6 +449,13 @@ const CardTrackingSystem = () => {
         {editingCard ? 'Edit Card' : 'Add New Card'}
       </h2>
       
+      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+        <p className="text-sm text-yellow-800">
+          📝 <strong>Simplified Version:</strong> Date fields temporarily removed to ensure reliability. 
+          We'll add them back once basic functionality is working!
+        </p>
+      </div>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -475,6 +465,7 @@ const CardTrackingSystem = () => {
               value={formData.player_card_name}
               onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
               className="w-full p-2 border rounded-lg"
+              placeholder="e.g., Michael Jordan"
               required
             />
           </div>
@@ -488,16 +479,6 @@ const CardTrackingSystem = () => {
               onChange={(e) => setFormData({...formData, cost: e.target.value})}
               className="w-full p-2 border rounded-lg"
               placeholder="0.00"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Date Purchased</label>
-            <input
-              type="date"
-              value={formData.date_purchased}
-              onChange={(e) => setFormData({...formData, date_purchased: e.target.value})}
-              className="w-full p-2 border rounded-lg"
             />
           </div>
           
@@ -579,7 +560,6 @@ const CardTrackingSystem = () => {
               setFormData({
                 player_card_name: '',
                 cost: '',
-                date_purchased: '',
                 source: 'eBay',
                 year: '',
                 set_name: '',
