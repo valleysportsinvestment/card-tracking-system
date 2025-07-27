@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import NewApp from './NewApp';  // Should point to NewApp
+import App from './App';  // Back to App
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<NewApp />);
+root.render(<App />);  // Back to App
