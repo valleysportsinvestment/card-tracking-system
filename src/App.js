@@ -1,3 +1,4 @@
+// UPDATED VERSION - NO DATE FIELDS
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
