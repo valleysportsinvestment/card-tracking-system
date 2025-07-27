@@ -790,6 +790,8 @@ const CardTrackingSystem = () => {
                   </div>
                 </div>
               </div>
+                </div>
+              </div>
 
               {/* Sale Information Section */}
               <div style={{ backgroundColor: '#f8d7da', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #f5c6cb' }}>
