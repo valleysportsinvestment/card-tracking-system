@@ -9,7 +9,7 @@ const App = () => {
   const [cards, setCards] = useState([]);
   const [currentView, setCurrentView] = useState('add');
   
-  // PHASE 2: Adding more fields (still no dates)
+  // PHASE 2: Updated fields
   const [formData, setFormData] = useState({
     player_card_name: '',
     cost: '',
@@ -17,16 +17,16 @@ const App = () => {
     set_name: '',
     status: 'Purchased',
     notes: '',
-    // NEW PHASE 2 FIELDS
+    // UPDATED FIELDS
     source: 'eBay',
     seller_name: '',
     listing_link: '',
     card_type: '',
-    sport: '',
     card_number: '',
     condition_purchased: '',
     serial_number: '',
     grading_company: '',
+    grade: '', // NEW GRADE FIELD
     grading_cost: '',
     selling_platform: 'eBay',
     price: '',
@@ -71,16 +71,15 @@ const App = () => {
         set_name: formData.set_name || null,
         status: formData.status,
         notes: formData.notes || null,
-        // PHASE 2 FIELDS
         source: formData.source,
         seller_name: formData.seller_name || null,
         listing_link: formData.listing_link || null,
         card_type: formData.card_type || null,
-        sport: formData.sport || null,
         card_number: formData.card_number || null,
         condition_purchased: formData.condition_purchased || null,
         serial_number: formData.serial_number || null,
         grading_company: formData.grading_company || null,
+        grade: formData.grade ? parseInt(formData.grade) : null, // NEW GRADE FIELD
         grading_cost: formData.grading_cost ? parseFloat(formData.grading_cost) : null,
         selling_platform: formData.selling_platform,
         price: formData.price ? parseFloat(formData.price) : null,
@@ -104,11 +103,11 @@ const App = () => {
         seller_name: '',
         listing_link: '',
         card_type: '',
-        sport: '',
         card_number: '',
         condition_purchased: '',
         serial_number: '',
         grading_company: '',
+        grade: '',
         grading_cost: '',
         selling_platform: 'eBay',
         price: '',
@@ -184,11 +183,11 @@ const App = () => {
         <div>
           <h2>➕ Add New Card</h2>
           <div style={{ backgroundColor: '#e7f3ff', padding: '10px', marginBottom: '20px', borderRadius: '4px' }}>
-            <strong>🚀 Phase 2:</strong> Added seller info, grading details, and sale tracking - Still no date fields for stability!
+            <strong>🔧 Phase 2 Updated:</strong> Removed sport field, added grade (1-10), moved status to top section!
           </div>
           
           <form onSubmit={handleSubmit} style={{ maxWidth: '800px' }}>
-            {/* Basic Card Info */}
+            {/* Basic Card Info - NOW WITH STATUS */}
             <div style={{ backgroundColor: '#f8f9fa', padding: '15px', marginBottom: '20px', borderRadius: '4px' }}>
               <h3 style={{ margin: '0 0 15px 0', color: '#495057' }}>📋 Basic Card Information</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -202,6 +201,20 @@ const App = () => {
                     placeholder="e.g., Michael Jordan"
                     required
                   />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>📊 Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  >
+                    <option value="Purchased">Purchased</option>
+                    <option value="Grading">Grading</option>
+                    <option value="Selling">Selling</option>
+                    <option value="Sold">Sold</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Year</label>
@@ -224,7 +237,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Card Type</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Card Type</label>
                   <input
                     type="text"
                     value={formData.card_type}
@@ -234,17 +247,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Sport</label>
-                  <input
-                    type="text"
-                    value={formData.sport}
-                    onChange={(e) => setFormData({...formData, sport: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-                    placeholder="e.g., Football, Basketball"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Card Number</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Card Number</label>
                   <input
                     type="text"
                     value={formData.card_number}
@@ -254,7 +257,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Serial Number/Parallel</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Serial Number/Parallel</label>
                   <input
                     type="text"
                     value={formData.serial_number}
@@ -264,7 +267,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Condition When Purchased</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Condition When Purchased</label>
                   <input
                     type="text"
                     value={formData.condition_purchased}
@@ -292,7 +295,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Source</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Source</label>
                   <select
                     value={formData.source}
                     onChange={(e) => setFormData({...formData, source: e.target.value})}
@@ -304,7 +307,7 @@ const App = () => {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Seller Name</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Seller Name</label>
                   <input
                     type="text"
                     value={formData.seller_name}
@@ -314,7 +317,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Listing Link</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Listing Link</label>
                   <input
                     type="url"
                     value={formData.listing_link}
@@ -326,12 +329,12 @@ const App = () => {
               </div>
             </div>
 
-            {/* Grading Info */}
+            {/* Grading Info - NOW WITH GRADE DROPDOWN */}
             <div style={{ backgroundColor: '#d4edda', padding: '15px', marginBottom: '20px', borderRadius: '4px' }}>
               <h3 style={{ margin: '0 0 15px 0', color: '#155724' }}>🏆 Grading Information</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Grading Company</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Grading Company</label>
                   <select
                     value={formData.grading_company}
                     onChange={(e) => setFormData({...formData, grading_company: e.target.value})}
@@ -345,7 +348,27 @@ const App = () => {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Grading Cost ($)</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Grade (1-10)</label>
+                  <select
+                    value={formData.grade}
+                    onChange={(e) => setFormData({...formData, grade: e.target.value})}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  >
+                    <option value="">No Grade</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Grading Cost ($)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -361,23 +384,9 @@ const App = () => {
             {/* Sale Info */}
             <div style={{ backgroundColor: '#f8d7da', padding: '15px', marginBottom: '20px', borderRadius: '4px' }}>
               <h3 style={{ margin: '0 0 15px 0', color: '#721c24' }}>💸 Sale Information</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-                  >
-                    <option value="Purchased">Purchased</option>
-                    <option value="Grading">Grading</option>
-                    <option value="Selling">Selling</option>
-                    <option value="Sold">Sold</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Sale Price ($)</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Sale Price ($)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -388,7 +397,7 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Selling Platform</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Selling Platform</label>
                   <select
                     value={formData.selling_platform}
                     onChange={(e) => setFormData({...formData, selling_platform: e.target.value})}
@@ -400,7 +409,7 @@ const App = () => {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>🆕 Photo Links</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Photo Links</label>
                   <input
                     type="text"
                     value={formData.photo_links}
@@ -466,10 +475,9 @@ const App = () => {
                   <tr style={{ backgroundColor: '#f8f9fa' }}>
                     <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Card ID</th>
                     <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Player/Card</th>
-                    <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Sport</th>
                     <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Set</th>
                     <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Cost</th>
-                    <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Grading</th>
+                    <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Grade</th>
                     <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Price</th>
                     <th style={{ padding: '10px', border: '1px solid #ccc', textAlign: 'left' }}>Status</th>
                   </tr>
@@ -479,10 +487,22 @@ const App = () => {
                     <tr key={card.id}>
                       <td style={{ padding: '8px', border: '1px solid #ccc', fontFamily: 'monospace', fontSize: '12px' }}>{card.card_id}</td>
                       <td style={{ padding: '8px', border: '1px solid #ccc' }}>{card.player_card_name}</td>
-                      <td style={{ padding: '8px', border: '1px solid #ccc' }}>{card.sport}</td>
                       <td style={{ padding: '8px', border: '1px solid #ccc' }}>{card.set_name}</td>
                       <td style={{ padding: '8px', border: '1px solid #ccc' }}>${parseFloat(card.cost || 0).toFixed(2)}</td>
-                      <td style={{ padding: '8px', border: '1px solid #ccc' }}>{card.grading_company || 'Raw'}</td>
+                      <td style={{ padding: '8px', border: '1px solid #ccc' }}>
+                        {card.grade ? (
+                          <span style={{ 
+                            padding: '2px 6px', 
+                            borderRadius: '4px', 
+                            fontSize: '12px', 
+                            fontWeight: 'bold',
+                            backgroundColor: card.grade >= 9 ? '#d4edda' : card.grade >= 7 ? '#fff3cd' : '#f8d7da',
+                            color: card.grade >= 9 ? '#155724' : card.grade >= 7 ? '#856404' : '#721c24'
+                          }}>
+                            {card.grade}/10
+                          </span>
+                        ) : (card.grading_company || 'Raw')}
+                      </td>
                       <td style={{ padding: '8px', border: '1px solid #ccc' }}>{card.price ? `$${parseFloat(card.price).toFixed(2)}` : 'N/A'}</td>
                       <td style={{ padding: '8px', border: '1px solid #ccc' }}>
                         <span style={{ 
