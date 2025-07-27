@@ -13,7 +13,7 @@ A powerful, secure card inventory management system for card flippers and collec
 
 ## 🚀 Live Demo
 
-[Visit the live app here](https://your-app-url.vercel.app) *(Replace with your actual Vercel URL)*
+[Visit the live app here](https://card-tracking-system.vercel.app/) 
 
 ## 📋 What You Track
 
@@ -188,4 +188,4 @@ MIT License - feel free to use this for personal or commercial purposes.
 
 ---
 
-**Ready to take control of your card business? [Get started now!](https://your-app-url.vercel.app)**
+**Ready to take control of your card business? [Get started now!](https://card-tracking-system.vercel.app/)**
