@@ -526,31 +526,6 @@ const CardTrackingSystem = () => {
             </div>
           </div>
         )}
-                          <td style={{ padding: '12px' }}>
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                              <button
-                                onClick={() => handleEdit(card)}
-                                style={{ padding: '4px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                <EditIcon />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(card.id)}
-                                style={{ padding: '4px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                <DeleteIcon />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {currentView === 'add' && (
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
@@ -569,110 +544,6 @@ const CardTrackingSystem = () => {
                       type="date"
                       value={formData.date_purchased}
                       onChange={(e) => setFormData({...formData, date_purchased: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Source</label>
-                    <select
-                      value={formData.source}
-                      onChange={(e) => setFormData({...formData, source: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    >
-                      <option value="eBay">eBay</option>
-                      <option value="Card Show">Card Show</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Seller Name</label>
-                    <input
-                      type="text"
-                      value={formData.seller_name}
-                      onChange={(e) => setFormData({...formData, seller_name: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                      placeholder="Seller username or name"
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Cost ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.cost}
-                      onChange={(e) => setFormData({...formData, cost: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                      required
-                    />
-                  </div>
-
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Listing Link</label>
-                    <input
-                      type="url"
-                      value={formData.listing_link}
-                      onChange={(e) => setFormData({...formData, listing_link: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                      placeholder="https://ebay.com/..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Details Section */}
-              <div style={{ backgroundColor: '#f8f9fa', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#495057' }}>📋 Card Details</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Player/Card Name *</label>
-                    <input
-                      type="text"
-                      value={formData.player_card_name}
-                      onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Card Type</label>
-                    <select
-                      value={formData.card_type}
-                      onChange={(e) => setFormData({...formData, card_type: e.target.value})}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    >
-                      <option value="">Select Type</option>
-                      <option value="Football">Football</option>
-                      <option value="Basketball">Basketball</option>
-                      <option value="Baseball">Baseball</option>
-                      <option value="Pokemon">Pokemon</option>
-                      <option value="Magic">Magic</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Year</label>
-                    <input
-                      type="text"
-                      value={formData.year}
-                      onChange={(e) => setFormData({...formData, year: e.target.value})}
-                      placeholder="e.g., 2024-25"
-                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Set</label>
-                    <input
-                      type="text"
-                      value={formData.set_name}
-                      onChange={(e) => setFormData({...formData, set_name: e.target.value})}
-                      placeholder="e.g., Panini Prizm"
                       style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
                     />
                   </div>
@@ -790,8 +661,6 @@ const CardTrackingSystem = () => {
                   </div>
                 </div>
               </div>
-                </div>
-              </div>
 
               {/* Sale Information Section */}
               <div style={{ backgroundColor: '#f8d7da', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #f5c6cb' }}>
@@ -842,27 +711,6 @@ const CardTrackingSystem = () => {
                     />
                   </div>
                 </div>
-              </div><label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Date Sold</label>
-                  <input
-                    type="date"
-                    value={formData.date_sold}
-                    onChange={(e) => setFormData({...formData, date_sold: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Sale Price ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                  />
-                </div>
-              </div>
-              
               </div>
               
               <div style={{ marginBottom: '20px' }}>
@@ -914,4 +762,108 @@ const CardTrackingSystem = () => {
   );
 };
 
-export default CardTrackingSystem;
+export default CardTrackingSystem; '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Source</label>
+                    <select
+                      value={formData.source}
+                      onChange={(e) => setFormData({...formData, source: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    >
+                      <option value="eBay">eBay</option>
+                      <option value="Card Show">Card Show</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Seller Name</label>
+                    <input
+                      type="text"
+                      value={formData.seller_name}
+                      onChange={(e) => setFormData({...formData, seller_name: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      placeholder="Seller username or name"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Cost ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.cost}
+                      onChange={(e) => setFormData({...formData, cost: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Listing Link</label>
+                    <input
+                      type="url"
+                      value={formData.listing_link}
+                      onChange={(e) => setFormData({...formData, listing_link: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      placeholder="https://ebay.com/..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Details Section */}
+              <div style={{ backgroundColor: '#f8f9fa', padding: '20px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#495057' }}>📋 Card Details</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Player/Card Name *</label>
+                    <input
+                      type="text"
+                      value={formData.player_card_name}
+                      onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Card Type</label>
+                    <select
+                      value={formData.card_type}
+                      onChange={(e) => setFormData({...formData, card_type: e.target.value})}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    >
+                      <option value="">Select Type</option>
+                      <option value="Football">Football</option>
+                      <option value="Basketball">Basketball</option>
+                      <option value="Baseball">Baseball</option>
+                      <option value="Pokemon">Pokemon</option>
+                      <option value="Magic">Magic</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Year</label>
+                    <input
+                      type="text"
+                      value={formData.year}
+                      onChange={(e) => setFormData({...formData, year: e.target.value})}
+                      placeholder="e.g., 2024-25"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '5px' }}>Set</label>
+                    <input
+                      type="text"
+                      value={formData.set_name}
+                      onChange={(e) => setFormData({...formData, set_name: e.target.value})}
+                      placeholder="e.g., Panini Prizm"
+                      style={{ width: '100%', padding:
