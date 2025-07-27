@@ -15,127 +15,32 @@ const EyeIcon = () => <span className="text-lg">👁️</span>;
 const EyeOffIcon = () => <span className="text-lg">🙈</span>;
 
 let supabase = null;
-let supabaseOperations = null;
-
-const createSupabaseClient = (url, key) => {
-  return createClient(url, key);
-};
-
-// Helper function to clean data before sending to database
-const cleanDataForDatabase = (data) => {
-  const cleaned = { ...data };
-  
-  // Convert empty strings to null for date fields
-  const dateFields = ['date_purchased', 'submission_date', 'date_sold'];
-  dateFields.forEach(field => {
-    if (cleaned[field] === '') {
-      cleaned[field] = null;
-    }
-  });
-  
-  // Convert empty strings to null for numeric fields
-  const numericFields = ['cost', 'grade', 'price', 'grading_cost', 'grading_time_days', 'inventory_time_days', 'profit_loss'];
-  numericFields.forEach(field => {
-    if (cleaned[field] === '') {
-      cleaned[field] = null;
-    }
-  });
-  
-  return cleaned;
-};
-
-const createSupabaseOperations = (client) => ({
-  async select() {
-    const { data, error } = await client
-      .from('cards')
-      .select('*')
-      .order('created_at', { ascending: false });
-    return { data, error };
-  },
-  
-  async insert(card) {
-    const { data: existingCards } = await client
-      .from('cards')
-      .select('card_id')
-      .order('id', { ascending: false })
-      .limit(1);
-    
-    const nextNumber = existingCards && existingCards.length > 0 
-      ? parseInt(existingCards[0].card_id.replace('CARD', '')) + 1 
-      : 1;
-    
-    const cardWithId = {
-      ...cleanDataForDatabase(card),
-      card_id: `CARD${String(nextNumber).padStart(7, '0')}`
-    };
-    
-    const { data, error } = await client
-      .from('cards')
-      .insert([cardWithId])
-      .select();
-    return { data, error };
-  },
-  
-  async update(id, updates) {
-    const cleanedUpdates = cleanDataForDatabase(updates);
-    const { data, error } = await client
-      .from('cards')
-      .update(cleanedUpdates)
-      .eq('id', id)
-      .select();
-    return { data, error };
-  },
-  
-  async delete(id) {
-    const { data, error } = await client
-      .from('cards')
-      .delete()
-      .eq('id', id);
-    return { data, error };
-  }
-});
 
 const CardTrackingSystem = () => {
   const [cards, setCards] = useState([]);
   const [currentView, setCurrentView] = useState('setup');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCard, setEditingCard] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [supabaseConfig, setSupabaseConfig] = useState({
     url: '',
     key: ''
   });
 
+  // Simplified form with only essential fields first
   const [formData, setFormData] = useState({
+    player_card_name: '',
+    cost: '',
     date_purchased: '',
     source: 'eBay',
-    listing_link: '',
-    seller_name: '',
-    player_card_name: '',
     year: '',
     set_name: '',
-    cost: '',
     status: 'Purchased',
-    submission_date: '',
-    grade: '',
-    grading_time_days: '',
-    date_sold: '',
-    selling_platform: 'eBay',
-    price: '',
-    inventory_time_days: '',
-    card_type: '',
-    sport: '',
-    card_number: '',
-    condition_purchased: '',
-    grading_company: '',
-    serial_number: '',
-    grading_cost: '',
-    notes: '',
-    photo_links: ''
+    notes: ''
   });
 
   useEffect(() => {
@@ -149,10 +54,14 @@ const CardTrackingSystem = () => {
 
   const initializeSupabase = async (url, key) => {
     try {
-      supabase = createSupabaseClient(url, key);
-      supabaseOperations = createSupabaseOperations(supabase);
+      supabase = createClient(url, key);
       
-      const { data, error } = await supabaseOperations.select();
+      // Test connection by trying to read from cards table
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .limit(1);
+      
       if (error) {
         throw error;
       }
@@ -160,9 +69,9 @@ const CardTrackingSystem = () => {
       setIsConnected(true);
       setConnectionError('');
       setCurrentView('dashboard');
-      setCards(data || []);
+      await loadCards();
     } catch (error) {
-      setConnectionError('Failed to connect to Supabase. Please check your credentials.');
+      setConnectionError(`Connection failed: ${error.message}`);
       setIsConnected(false);
       console.error('Supabase connection error:', error);
     }
@@ -189,128 +98,179 @@ const CardTrackingSystem = () => {
   };
 
   const loadCards = async () => {
-    if (!supabaseOperations) return;
+    if (!supabase) return;
     
-    const { data, error } = await supabaseOperations.select();
-    if (!error) {
+    try {
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
       setCards(data || []);
-    } else {
+    } catch (error) {
       console.error('Error loading cards:', error);
     }
   };
 
-  const calculateDerivedFields = (card) => {
-    const updates = { ...card };
-    
-    if (card.submission_date && card.grade) {
-      const submissionDate = new Date(card.submission_date);
-      const today = new Date();
-      updates.grading_time_days = Math.floor((today - submissionDate) / (1000 * 60 * 60 * 24));
+  const generateCardId = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cards')
+        .select('card_id')
+        .order('id', { ascending: false })
+        .limit(1);
+      
+      if (error) {
+        throw error;
+      }
+      
+      const lastCard = data && data.length > 0 ? data[0] : null;
+      const nextNumber = lastCard 
+        ? parseInt(lastCard.card_id.replace('CARD', '')) + 1 
+        : 1;
+      
+      return `CARD${String(nextNumber).padStart(7, '0')}`;
+    } catch (error) {
+      console.error('Error generating card ID:', error);
+      return `CARD${String(Date.now()).slice(-7)}`;
     }
+  };
+
+  const cleanFormData = (data) => {
+    const cleaned = {};
     
-    if (card.date_purchased && card.date_sold) {
-      const purchaseDate = new Date(card.date_purchased);
-      const soldDate = new Date(card.date_sold);
-      updates.inventory_time_days = Math.floor((soldDate - purchaseDate) / (1000 * 60 * 60 * 24));
-    }
+    // Only include fields that have values or are required
+    Object.keys(data).forEach(key => {
+      const value = data[key];
+      
+      if (value === '' || value === null || value === undefined) {
+        // For required fields, convert empty to null
+        if (['player_card_name'].includes(key)) {
+          cleaned[key] = null;
+        }
+        // For date fields, convert empty to null
+        else if (key.includes('date')) {
+          cleaned[key] = null;
+        }
+        // For numeric fields, convert empty to null
+        else if (['cost', 'price', 'grade', 'grading_cost'].includes(key)) {
+          cleaned[key] = null;
+        }
+        // Skip other empty fields entirely
+      } else {
+        cleaned[key] = value;
+      }
+    });
     
-    if (card.price && card.cost) {
-      const revenue = parseFloat(card.price) || 0;
-      const totalCost = (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0);
-      updates.profit_loss = revenue - totalCost;
-    }
-    
-    return updates;
+    return cleaned;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!supabaseOperations) return;
+    if (!supabase) return;
     
-    const cardData = calculateDerivedFields(formData);
+    setIsLoading(true);
     
     try {
+      if (!formData.player_card_name.trim()) {
+        alert('Player/Card Name is required');
+        setIsLoading(false);
+        return;
+      }
+
+      const cleanedData = cleanFormData(formData);
+      
       if (editingCard) {
-        const { error } = await supabaseOperations.update(editingCard.id, cardData);
-        if (!error) {
-          setEditingCard(null);
-          await loadCards();
-          setCurrentView('inventory');
-        } else {
-          console.error('Error updating card:', error);
-          alert('Error updating card: ' + error.message);
+        // Update existing card
+        const { data, error } = await supabase
+          .from('cards')
+          .update(cleanedData)
+          .eq('id', editingCard.id)
+          .select();
+        
+        if (error) {
+          throw error;
         }
+        
+        alert('Card updated successfully!');
+        setEditingCard(null);
       } else {
-        const { error } = await supabaseOperations.insert(cardData);
-        if (!error) {
-          setShowAddForm(false);
-          await loadCards();
-          setCurrentView('inventory');
-          alert('Card added successfully!');
-        } else {
-          console.error('Error adding card:', error);
-          alert('Error adding card: ' + error.message);
+        // Insert new card
+        const cardId = await generateCardId();
+        const cardData = {
+          ...cleanedData,
+          card_id: cardId
+        };
+        
+        const { data, error } = await supabase
+          .from('cards')
+          .insert([cardData])
+          .select();
+        
+        if (error) {
+          throw error;
         }
+        
+        alert('Card added successfully!');
       }
       
-      // Reset form
+      // Reset form and reload
       setFormData({
+        player_card_name: '',
+        cost: '',
         date_purchased: '',
         source: 'eBay',
-        listing_link: '',
-        seller_name: '',
-        player_card_name: '',
         year: '',
         set_name: '',
-        cost: '',
         status: 'Purchased',
-        submission_date: '',
-        grade: '',
-        grading_time_days: '',
-        date_sold: '',
-        selling_platform: 'eBay',
-        price: '',
-        inventory_time_days: '',
-        card_type: '',
-        sport: '',
-        card_number: '',
-        condition_purchased: '',
-        grading_company: '',
-        serial_number: '',
-        grading_cost: '',
-        notes: '',
-        photo_links: ''
+        notes: ''
       });
+      
+      await loadCards();
+      setCurrentView('inventory');
+      
     } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Error submitting form: ' + error.message);
+      console.error('Error saving card:', error);
+      alert(`Error saving card: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleEdit = (card) => {
     setEditingCard(card);
-    // Convert null values back to empty strings for the form
-    const formattedCard = { ...card };
-    Object.keys(formattedCard).forEach(key => {
-      if (formattedCard[key] === null) {
-        formattedCard[key] = '';
-      }
+    // Convert null values to empty strings for form
+    const formattedCard = {};
+    Object.keys(formData).forEach(key => {
+      formattedCard[key] = card[key] || '';
     });
     setFormData(formattedCard);
     setCurrentView('add');
   };
 
   const handleDelete = async (id) => {
-    if (!supabaseOperations) return;
+    if (!supabase) return;
     
     if (window.confirm('Are you sure you want to delete this card?')) {
-      const { error } = await supabaseOperations.delete(id);
-      if (!error) {
-        await loadCards();
+      try {
+        const { error } = await supabase
+          .from('cards')
+          .delete()
+          .eq('id', id);
+        
+        if (error) {
+          throw error;
+        }
+        
         alert('Card deleted successfully!');
-      } else {
+        await loadCards();
+      } catch (error) {
         console.error('Error deleting card:', error);
-        alert('Error deleting card: ' + error.message);
+        alert(`Error deleting card: ${error.message}`);
       }
     }
   };
@@ -323,11 +283,11 @@ const CardTrackingSystem = () => {
 
   const dashboardStats = {
     totalCards: cards.length,
-    totalInvested: cards.reduce((sum, card) => sum + (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0), 0),
+    totalInvested: cards.reduce((sum, card) => sum + (parseFloat(card.cost) || 0), 0),
     totalRevenue: cards.filter(card => card.status === 'Sold').reduce((sum, card) => sum + (parseFloat(card.price) || 0), 0),
     totalProfit: cards.filter(card => card.status === 'Sold').reduce((sum, card) => {
       const revenue = parseFloat(card.price) || 0;
-      const totalCost = (parseFloat(card.cost) || 0) + (parseFloat(card.grading_cost) || 0);
+      const totalCost = parseFloat(card.cost) || 0;
       return sum + (revenue - totalCost);
     }, 0)
   };
@@ -394,149 +354,14 @@ const CardTrackingSystem = () => {
         </form>
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">How to find your credentials:</h3>
+          <h3 className="text-sm font-medium text-blue-800 mb-2">Quick Setup:</h3>
           <ol className="text-xs text-blue-700 space-y-1">
-            <li>1. Go to your Supabase dashboard</li>
-            <li>2. Select your project</li>
+            <li>1. Go to supabase.com → Create account</li>
+            <li>2. Create new project</li>
             <li>3. Go to Settings → API</li>
-            <li>4. Copy the "Project URL" and "anon public" key</li>
+            <li>4. Copy URL and anon key</li>
+            <li>5. Run the SQL script (see README)</li>
           </ol>
-        </div>
-
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-sm font-medium text-gray-800 mb-2">Need to create the database table?</h3>
-          <p className="text-xs text-gray-600 mb-2">Run this SQL in your Supabase SQL Editor:</p>
-          <button
-            onClick={() => setCurrentView('sql-setup')}
-            className="text-blue-600 hover:text-blue-800 text-xs underline"
-          >
-            View SQL Setup Script
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSqlSetup = () => (
-    <div className="max-w-4xl mx-auto mt-10">
-      <div className="bg-white p-8 rounded-lg shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Database Setup</h2>
-          <button
-            onClick={() => setCurrentView('setup')}
-            className="text-blue-600 hover:text-blue-800"
-          >
-            ← Back to Setup
-          </button>
-        </div>
-
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <p className="text-sm text-gray-700 mb-2">
-            Copy and paste this SQL into your Supabase SQL Editor to create the cards table:
-          </p>
-        </div>
-
-        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-          <pre>
-{`-- Create the cards table
-CREATE TABLE cards (
-  id BIGSERIAL PRIMARY KEY,
-  card_id TEXT UNIQUE NOT NULL,
-  date_purchased DATE,
-  source TEXT,
-  listing_link TEXT,
-  seller_name TEXT,
-  player_card_name TEXT NOT NULL,
-  year TEXT,
-  set_name TEXT,
-  cost DECIMAL(10,2),
-  status TEXT DEFAULT 'Purchased',
-  submission_date DATE,
-  grade INTEGER,
-  grading_time_days INTEGER,
-  date_sold DATE,
-  selling_platform TEXT,
-  price DECIMAL(10,2),
-  inventory_time_days INTEGER,
-  card_type TEXT,
-  sport TEXT,
-  card_number TEXT,
-  condition_purchased TEXT,
-  grading_company TEXT,
-  serial_number TEXT,
-  grading_cost DECIMAL(10,2),
-  profit_loss DECIMAL(10,2),
-  notes TEXT,
-  photo_links TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable Row Level Security
-ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
-
--- Create a policy for authenticated users
-CREATE POLICY "Allow all operations for authenticated users" ON cards
-    FOR ALL USING (auth.role() = 'authenticated');`}
-          </pre>
-        </div>
-
-        <div className="mt-6 flex gap-4">
-          <button
-            onClick={() => {
-              const sqlText = `-- Create the cards table
-CREATE TABLE cards (
-  id BIGSERIAL PRIMARY KEY,
-  card_id TEXT UNIQUE NOT NULL,
-  date_purchased DATE,
-  source TEXT,
-  listing_link TEXT,
-  seller_name TEXT,
-  player_card_name TEXT NOT NULL,
-  year TEXT,
-  set_name TEXT,
-  cost DECIMAL(10,2),
-  status TEXT DEFAULT 'Purchased',
-  submission_date DATE,
-  grade INTEGER,
-  grading_time_days INTEGER,
-  date_sold DATE,
-  selling_platform TEXT,
-  price DECIMAL(10,2),
-  inventory_time_days INTEGER,
-  card_type TEXT,
-  sport TEXT,
-  card_number TEXT,
-  condition_purchased TEXT,
-  grading_company TEXT,
-  serial_number TEXT,
-  grading_cost DECIMAL(10,2),
-  profit_loss DECIMAL(10,2),
-  notes TEXT,
-  photo_links TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable Row Level Security
-ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
-
--- Create a policy for authenticated users
-CREATE POLICY "Allow all operations for authenticated users" ON cards
-    FOR ALL USING (auth.role() = 'authenticated');`;
-              navigator.clipboard.writeText(sqlText);
-              alert('SQL copied to clipboard!');
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Copy SQL
-          </button>
-          <button
-            onClick={() => setCurrentView('setup')}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-          >
-            Done
-          </button>
         </div>
       </div>
     </div>
@@ -599,7 +424,6 @@ CREATE POLICY "Allow all operations for authenticated users" ON cards
                 <th className="text-left p-2">Set</th>
                 <th className="text-left p-2">Status</th>
                 <th className="text-left p-2">Cost</th>
-                <th className="text-left p-2">Current Value</th>
               </tr>
             </thead>
             <tbody>
@@ -619,7 +443,6 @@ CREATE POLICY "Allow all operations for authenticated users" ON cards
                     </span>
                   </td>
                   <td className="p-2">${parseFloat(card.cost || 0).toFixed(2)}</td>
-                  <td className="p-2">${card.status === 'Sold' ? parseFloat(card.price || 0).toFixed(2) : 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
@@ -646,6 +469,29 @@ CREATE POLICY "Allow all operations for authenticated users" ON cards
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
+            <label className="block text-sm font-medium mb-1">Player/Card Name *</label>
+            <input
+              type="text"
+              value={formData.player_card_name}
+              onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Cost ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.cost}
+              onChange={(e) => setFormData({...formData, cost: e.target.value})}
+              className="w-full p-2 border rounded-lg"
+              placeholder="0.00"
+            />
+          </div>
+          
+          <div>
             <label className="block text-sm font-medium mb-1">Date Purchased</label>
             <input
               type="date"
@@ -666,37 +512,6 @@ CREATE POLICY "Allow all operations for authenticated users" ON cards
               <option value="Card Show">Card Show</option>
               <option value="Other">Other</option>
             </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Seller Name</label>
-            <input
-              type="text"
-              value={formData.seller_name}
-              onChange={(e) => setFormData({...formData, seller_name: e.target.value})}
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Listing Link</label>
-            <input
-              type="url"
-              value={formData.listing_link}
-              onChange={(e) => setFormData({...formData, listing_link: e.target.value})}
-              className="w-full p-2 border rounded-lg"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Player/Card Name *</label>
-            <input
-              type="text"
-              value={formData.player_card_name}
-              onChange={(e) => setFormData({...formData, player_card_name: e.target.value})}
-              className="w-full p-2 border rounded-lg"
-              required
-            />
           </div>
           
           <div>
@@ -722,41 +537,210 @@ CREATE POLICY "Allow all operations for authenticated users" ON cards
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Card Type/Category</label>
-            <input
-              type="text"
-              value={formData.card_type}
-              onChange={(e) => setFormData({...formData, card_type: e.target.value})}
+            <label className="block text-sm font-medium mb-1">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({...formData, status: e.target.value})}
               className="w-full p-2 border rounded-lg"
-              placeholder="e.g., Sports, Pokemon, Magic"
-            />
+            >
+              <option value="Purchased">Purchased</option>
+              <option value="Grading">Grading</option>
+              <option value="Selling">Selling</option>
+              <option value="Sold">Sold</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Sport</label>
-            <input
-              type="text"
-              value={formData.sport}
-              onChange={(e) => setFormData({...formData, sport: e.target.value})}
-              className="w-full p-2 border rounded-lg"
-              placeholder="e.g., Football, Basketball"
-            />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium mb-1">Notes</label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({...formData, notes: e.target.value})}
+            className="w-full p-2 border rounded-lg"
+            rows="3"
+            placeholder="Any special notes about this card..."
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isLoading ? 'Saving...' : (editingCard ? 'Update Card' : 'Add Card')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingCard(null);
+              setCurrentView('inventory');
+              setFormData({
+                player_card_name: '',
+                cost: '',
+                date_purchased: '',
+                source: 'eBay',
+                year: '',
+                set_name: '',
+                status: 'Purchased',
+                notes: ''
+              });
+            }}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+
+  const renderInventory = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Card Inventory</h2>
+        <button
+          onClick={() => setCurrentView('add')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <PlusIcon />
+          Add Card
+        </button>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <SearchIcon />
+        <input
+          type="text"
+          placeholder="Search by player, set, or card ID..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1 p-2 border rounded-lg"
+        />
+      </div>
+      
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left p-3">Card ID</th>
+                <th className="text-left p-3">Player/Card</th>
+                <th className="text-left p-3">Year</th>
+                <th className="text-left p-3">Set</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Cost</th>
+                <th className="text-left p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCards.map(card => (
+                <tr key={card.id} className="border-b hover:bg-gray-50">
+                  <td className="p-3 font-mono text-xs">{card.card_id}</td>
+                  <td className="p-3">{card.player_card_name}</td>
+                  <td className="p-3">{card.year}</td>
+                  <td className="p-3">{card.set_name}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      card.status === 'Sold' ? 'bg-green-100 text-green-800' :
+                      card.status === 'Selling' ? 'bg-yellow-100 text-yellow-800' :
+                      card.status === 'Grading' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {card.status}
+                    </span>
+                  </td>
+                  <td className="p-3">${parseFloat(card.cost || 0).toFixed(2)}</td>
+                  <td className="p-3">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(card)}
+                        className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(card.id)}
+                        className="p-1 text-red-600 hover:bg-red-100 rounded"
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {filteredCards.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            {cards.length === 0 ? (
+              <div>
+                <div className="mx-auto mb-4"><PackageIcon /></div>
+                <p className="text-lg font-medium">No cards yet</p>
+                <p className="text-sm">Add your first card to get started!</p>
+              </div>
+            ) : (
+              <p>No cards match your search.</p>
+            )}
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Card Number</label>
-            <input
-              type="text"
-              value={formData.card_number}
-              onChange={(e) => setFormData({...formData, card_number: e.target.value})}
-              className="w-full p-2 border rounded-lg"
-            />
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Card Tracking System</h1>
+            {isConnected && (
+              <div className="flex items-center space-x-4">
+                <nav className="flex space-x-4">
+                  <button
+                    onClick={() => setCurrentView('dashboard')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'dashboard' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('inventory')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'inventory' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Inventory
+                  </button>
+                </nav>
+                <button
+                  onClick={handleDisconnect}
+                  className="px-3 py-2 text-sm text-red-600 hover:text-red-800"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Serial Number/Parallel</label>
-            <input
-              type="text"
-              value={formData.serial_number}
-              onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
-              className="w-full p-2 border rounded-lg"
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {!isConnected && currentView === 'setup' && renderSetupScreen()}
+        {isConnected && currentView === 'dashboard' && renderDashboard()}
+        {isConnected && currentView === 'inventory' && renderInventory()}
+        {isConnected && currentView === 'add' && renderCardForm()}
+      </div>
+    </div>
+  );
+};
+
+export default CardTrackingSystem;
