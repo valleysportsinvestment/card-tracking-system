@@ -1,6 +1,3 @@
-// UPDATED AT: [PUT CURRENT TIME HERE] - VERSION 2.0
-alert("NEW VERSION LOADED - CHECK TIME!");
-
 // VERSION 2.0 - NEW FIELDS TEST
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
