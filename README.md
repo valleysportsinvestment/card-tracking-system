@@ -188,12 +188,4 @@ MIT License - feel free to use this for personal or commercial purposes.
 
 ---
 
-## 🎉 Success Stories
-
-*"I've been tracking cards in spreadsheets for years. This app has saved me hours and helped me spot my most profitable cards!"* - Card Flipper
-
-*"The profit tracking is amazing. I can finally see which sets and grades give me the best ROI."* - Sports Card Investor
-
----
-
 **Ready to take control of your card business? [Get started now!](https://your-app-url.vercel.app)**
